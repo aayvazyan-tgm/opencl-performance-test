@@ -40,6 +40,21 @@ task natives {
 // Unfortunatly the Gradle app plug-in does not allow me to pass in -D options.
 // LWJGL
 run { 
-	systemProperties = [ 'java.library.path' : './build/natives/windows' ]
+	systemProperties = [ 'java.library.path' : './build/natives/'+getOS()]
 	it.dependsOn natives
+}
+
+
+import org.apache.tools.ant.taskdefs.condition.Os
+public String getOS() {
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        return "windows"
+    }
+    if (Os.isFamily(Os.FAMILY_MAC)) {
+        return "osx"
+    }
+    if (Os.isFamily(Os.FAMILY_UNIX)) {
+        return "linux"
+    }
+    return "could not determine OS in build.gradle"
 }
