@@ -1,4 +1,4 @@
-Hello OpenCL World
+OpenCL Performance Test
 ==================
 
 
