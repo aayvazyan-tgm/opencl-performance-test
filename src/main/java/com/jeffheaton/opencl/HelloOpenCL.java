@@ -25,7 +25,6 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.*;
 
 import java.nio.FloatBuffer;
-import java.sql.Time;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -63,14 +62,19 @@ public class HelloOpenCL {
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String... args) throws Exception {
         // Initialize OpenCL and create a context and command queue
         CL.create();
 
-        displayInfo();
+        if (args.length != 1 || !args[0].equalsIgnoreCase("cpu")) {
+            displayInfo();
+        }
 
         CLPlatform platform = CLPlatform.getPlatforms().get(0);
-        List<CLDevice> devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
+
+        List<CLDevice> devices;
+        if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
+        else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
         CLContext context = CLContext.create(platform, devices, null, null, null);
         CLCommandQueue queue = clCreateCommandQueue(context, devices.get(0), CL_QUEUE_PROFILING_ENABLE, null);
 
@@ -99,15 +103,15 @@ public class HelloOpenCL {
         kernel.setArg(2, answerMem);
 
         //Enqueue for execution
-        long startTime=System.nanoTime();
+        long startTime = System.nanoTime();
         clEnqueueNDRangeKernel(queue, kernel, 1, null, kernel1DGlobalWorkSize, null, null, null);
 
         // Read the results memory back into our result buffer
         clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
         clFinish(queue);
-        long endTime=System.nanoTime();
+        long endTime = System.nanoTime();
 
-        long totalTime = endTime-startTime;
+        long totalTime = endTime - startTime;
         // Print the result memory
         print(a);
         System.out.println("%");
@@ -126,7 +130,10 @@ public class HelloOpenCL {
         clReleaseCommandQueue(queue);
         clReleaseContext(context);
         CL.destroy();
-        System.out.println("Starting CPU test");
 
+        if (args.length == 0) {
+            System.out.println("Starting CPU test");
+            main("CPU");
+        }
     }
 }
