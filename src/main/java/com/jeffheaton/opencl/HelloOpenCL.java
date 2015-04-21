@@ -45,6 +45,7 @@ public class HelloOpenCL {
             CLPlatform platform = CLPlatform.getPlatforms().get(platformIndex);
             System.out.println("Platform #" + platformIndex + ":" + platform.getInfoString(CL_PLATFORM_NAME));
             List<CLDevice> devices = platform.getDevices(CL_DEVICE_TYPE_ALL);
+            if(devices==null)continue;
             for (int deviceIndex = 0; deviceIndex < devices.size(); deviceIndex++) {
                 CLDevice device = devices.get(deviceIndex);
                 System.out.printf(Locale.ENGLISH, "Device #%d(%s):%s\n",
@@ -69,8 +70,15 @@ public class HelloOpenCL {
         if (args.length != 1 || !args[0].equalsIgnoreCase("cpu")) {
             displayInfo();
         }
-
-        CLPlatform platform = CLPlatform.getPlatforms().get(0);
+        CLPlatform platform=null;
+        for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
+            platform = CLPlatform.getPlatforms().get(platformIndex);
+            List<CLDevice> devices;
+            if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
+            else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
+            if(devices==null)continue;
+            if(devices.size()>=1)break;
+        }
 
         List<CLDevice> devices;
         if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
