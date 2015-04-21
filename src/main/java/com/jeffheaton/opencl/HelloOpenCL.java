@@ -17,6 +17,7 @@
  * and trademarks visit:
  * http://www.heatonresearch.com/copyright
  */
+//Source http://wiki.lwjgl.org/wiki/OpenCL_in_LWJGL
 package com.jeffheaton.opencl;
 
 import org.lwjgl.BufferUtils;
@@ -24,8 +25,10 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.*;
 
 import java.nio.FloatBuffer;
+import java.sql.Time;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import static com.jeffheaton.opencl.UtilCL.print;
 import static org.lwjgl.opencl.CL10.*;
@@ -80,32 +83,40 @@ public class HelloOpenCL {
         clFinish(queue);
 
         // Load the source from a resource file
-        String source = UtilCL.getResourceAsString("cl/sum.txt");
+        String source = UtilCL.getResourceAsString("cl/calc.txt");
 
         // Create our program and kernel
         CLProgram program = clCreateProgramWithSource(context, source, null);
         Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
-        // sum has to match a kernel method name in the OpenCL source
-        CLKernel kernel = clCreateKernel(program, "sum", null);
+        // calc has to match a kernel method name in the OpenCL source
+        CLKernel kernel = clCreateKernel(program, "calc", null);
 
-        // Execution our kernel
+        // Parameters
         PointerBuffer kernel1DGlobalWorkSize = BufferUtils.createPointerBuffer(1);
         kernel1DGlobalWorkSize.put(0, a.capacity());
         kernel.setArg(0, aMem);
         kernel.setArg(1, bMem);
         kernel.setArg(2, answerMem);
+
+        //Enqueue for execution
+        long startTime=System.nanoTime();
         clEnqueueNDRangeKernel(queue, kernel, 1, null, kernel1DGlobalWorkSize, null, null, null);
 
         // Read the results memory back into our result buffer
         clEnqueueReadBuffer(queue, answerMem, 1, 0, answer, null, null);
         clFinish(queue);
+        long endTime=System.nanoTime();
+
+        long totalTime = endTime-startTime;
         // Print the result memory
         print(a);
-        System.out.println("+");
+        System.out.println("%");
         print(b);
         System.out.println("=");
         print(answer);
-
+        System.out.println("Total execution time in ns:" + totalTime);
+        System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
+        System.out.println("Cleaning up...");
         // Clean up OpenCL resources
         clReleaseKernel(kernel);
         clReleaseProgram(program);
@@ -115,5 +126,7 @@ public class HelloOpenCL {
         clReleaseCommandQueue(queue);
         clReleaseContext(context);
         CL.destroy();
+        System.out.println("Starting CPU test");
+
     }
 }
