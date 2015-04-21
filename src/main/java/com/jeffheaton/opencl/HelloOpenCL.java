@@ -35,9 +35,6 @@ import static org.lwjgl.opencl.CL10.*;
 public class HelloOpenCL {
 
     // Data buffers to store the input and result data in
-    static final FloatBuffer a = UtilCL.toFloatBuffer(new float[]{1, 2, 3, 4, 5, 6, 7, 8, 9, 10});
-    static final FloatBuffer b = UtilCL.toFloatBuffer(new float[]{9, 8, 7, 6, 5, 4, 3, 2, 1, 0});
-    static final FloatBuffer answer = BufferUtils.createFloatBuffer(a.capacity());
 
     public static void displayInfo() {
 
@@ -64,6 +61,10 @@ public class HelloOpenCL {
     }
 
     public static void main(String... args) throws Exception {
+        final FloatBuffer a = UtilCL.toFloatBuffer(geberateFloatData(100000,1));
+        final FloatBuffer b = UtilCL.toFloatBuffer(geberateFloatData(100000,94673));
+        final FloatBuffer answer = BufferUtils.createFloatBuffer(a.capacity());
+
         // Initialize OpenCL and create a context and command queue
         CL.create();
 
@@ -99,7 +100,10 @@ public class HelloOpenCL {
 
         // Create our program and kernel
         CLProgram program = clCreateProgramWithSource(context, source, null);
-        Util.checkCLError(clBuildProgram(program, devices.get(0), "", null));
+        int error=(clBuildProgram(program, devices.get(0), "", null));
+        System.out.println(program.getBuildInfoString(
+                devices.get(0), CL_PROGRAM_BUILD_LOG));
+        Util.checkCLError(error);
         // calc has to match a kernel method name in the OpenCL source
         CLKernel kernel = clCreateKernel(program, "calc", null);
 
@@ -121,11 +125,11 @@ public class HelloOpenCL {
 
         long totalTime = endTime - startTime;
         // Print the result memory
-        print(a);
-        System.out.println("%");
-        print(b);
-        System.out.println("=");
-        print(answer);
+//        print(a);
+//        System.out.println("%");
+//        print(b);
+//        System.out.println("=");
+//        print(answer);
         System.out.println("Total execution time in ns:" + totalTime);
         System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
         System.out.println("Cleaning up...");
@@ -143,5 +147,13 @@ public class HelloOpenCL {
             System.out.println("Starting CPU test");
             main("CPU");
         }
+    }
+
+    private static float[] geberateFloatData(int i,int modifier) {
+        float[] generated=new float[i];
+        for (int j = 0; j < i; j++) {
+            generated[j]=modifier*(j%10);
+        }
+        return generated;
     }
 }

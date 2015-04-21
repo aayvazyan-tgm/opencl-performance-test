@@ -1,10 +1,34 @@
+int Euklid(int a, int b);
+
 kernel void calc(global const float *a, global const float *b, global float *answer) {
   unsigned int xid = get_global_id(0);
-  for(int i = 0; i < 10000; i++) {
+  /**for(int i = 0; i < 10000; i++) {
     for(int j = 0; j < 1000; j++) {
         answer[xid] += (a[xid]+b[xid]);
         answer[xid] -= (a[xid]+b[xid]);
     }
   }
   answer[xid] += fmod(a[xid],b[xid]);
+  **/
+  answer[xid] = Euklid(a[xid],b[xid]);
+}
+
+int Euklid(int a, int b)
+{
+    if (a == 0)                          /**Wenn a=0 ist b der größte gemeinsame Teiler laut Definition**/
+    {
+    	return b;
+    }
+    while(b != 0)                        /**So lange wiederholen, wie b nicht 0 ist.**/
+    {
+    	if (a > b)
+    	{
+    		a = a - b;               /**Wenn a größer als b, subtrahiere b von a.**/
+    	}
+        else
+    	{
+    		b = b - a;               /**In jedem anderen Fall subtrahiere a von b.**/
+    	}
+    }
+    return a;                            /**In a steht jetzt der größte gemeinsame Teiler von a und b.**/
 }
