@@ -60,6 +60,24 @@ public class HelloOpenCL {
         }
     }
 
+    public static void displayInfoMac() {
+
+        for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
+            CLPlatform platform = CLPlatform.getPlatforms().get(platformIndex);
+
+            System.out.println("Platform #" + platformIndex + ":" + platform.getInfoString(CL_PLATFORM_NAME));
+
+            List<CLDevice> devices = platform.getDevices(CL_DEVICE_TYPE_ALL);
+            for (int deviceIndex = 0; deviceIndex < devices.size(); deviceIndex++) {
+                CLDevice device = devices.get(deviceIndex);
+                System.out.printf(Locale.ENGLISH, "Device #%d(%s):%s\n",
+                        deviceIndex,
+                        UtilCL.getDeviceType(device.getInfoInt(CL_DEVICE_TYPE)),
+                        device.getInfoString(CL_DEVICE_NAME));
+            }
+        }
+    }
+
     public static void main(String... args) throws Exception {
         final FloatBuffer a = UtilCL.toFloatBuffer(geberateFloatData(100000,1));
         final FloatBuffer b = UtilCL.toFloatBuffer(geberateFloatData(100000,94673));
@@ -70,6 +88,7 @@ public class HelloOpenCL {
 
         if (args.length != 1 || !args[0].equalsIgnoreCase("cpu")) {
             displayInfo();
+            //displayInfoMac();
         }
         CLPlatform platform=null;
         for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
