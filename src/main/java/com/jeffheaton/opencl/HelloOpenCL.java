@@ -30,33 +30,18 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import static com.jeffheaton.opencl.UtilCL.print;
 import static org.lwjgl.opencl.CL10.*;
 
 public class HelloOpenCL {
     public static void main(String... args) throws Exception {
-        if (args.length > 0 && args[0].contains("once")) {
-            displayInfo();
-            System.out.println("--------------------------------------------");
-            {
-                System.out.println("Starting GPU benchmark");
-                long totalTime = benchmark();
-                System.out.println("Total execution time in ns:" + totalTime);
-                System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
-            }
-            System.out.println("--------------------------------------------");
-            {
-                System.out.println("Starting CPU benchmark");
-                long totalTime = benchmark("CPU");
-                System.out.println("Total execution time in ns:" + totalTime);
-                System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
-            }
-        } else {
+        if (args.length > 0 && args[0].contains("calc")) {
             System.out.println("Starting GPU benchmark");
-            int benchmarks = 1000;
+            int benchmarks = 100;
             int pauseBetweenBenchmarks=100;
             double[] gpuBenchmarkResults = new double[benchmarks];
             for (int i = 0; i < benchmarks; i++) {
-                long res = benchmark();
+                long res = benchmark("GPU","calc.c");
                 gpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
                 Thread.sleep(pauseBetweenBenchmarks);
             }
@@ -65,7 +50,47 @@ public class HelloOpenCL {
             System.out.println("Starting CPU benchmark");
             double[] cpuBenchmarkResults = new double[benchmarks];
             for (int i = 0; i < benchmarks; i++) {
-                long res = benchmark("CPU");
+                long res = benchmark("CPU", "calc.c");
+                cpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
+                Thread.sleep(pauseBetweenBenchmarks);
+            }
+
+            //Print results
+            displayInfo();
+            System.out.println("--------------------------------------------");
+
+            System.out.println("#GPU Result:#");
+            for (int i = 0; i < gpuBenchmarkResults.length; i++) {
+                if(i==0) System.out.print("[");
+                System.out.print(gpuBenchmarkResults[i]);
+                if(i!=gpuBenchmarkResults.length-1) System.out.print(",");
+                else System.out.print("]");
+            }
+            System.out.println();
+            System.out.println("#CPU Result:#");
+            for (int i = 0; i < cpuBenchmarkResults.length; i++) {
+                if(i==0) System.out.print("[");
+                System.out.print(cpuBenchmarkResults[i]);
+                if(i!=cpuBenchmarkResults.length-1) System.out.print(",");
+                else System.out.print("]");
+            }
+            System.out.println();
+        } else {//fibonacci
+            System.out.println("Starting GPU benchmark");
+            int benchmarks = 100;
+            int pauseBetweenBenchmarks=100;
+            double[] gpuBenchmarkResults = new double[benchmarks];
+            for (int i = 0; i < benchmarks; i++) {
+                long res = benchmark("GPU","fibonacci.c");
+                gpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
+                Thread.sleep(pauseBetweenBenchmarks);
+            }
+
+            System.out.println("--------------------------------------------");
+            System.out.println("Starting CPU benchmark");
+            double[] cpuBenchmarkResults = new double[benchmarks];
+            for (int i = 0; i < benchmarks; i++) {
+                long res = benchmark("CPU", "fibonacci.c");
                 cpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
                 Thread.sleep(pauseBetweenBenchmarks);
             }
@@ -94,11 +119,12 @@ public class HelloOpenCL {
     }
 
     /**
-     * @param args "CPU" or nothing
+     * @param args "CPU" or "GPU" and the name of the kernel file in the cl folder
      * @return
      * @throws Exception
      */
     public static long benchmark(String... args) throws Exception {
+        if(args.length<2)throw new RuntimeException("invalid args");
         final FloatBuffer a = UtilCL.toFloatBuffer(geberateFloatData(100000, 1));
         final FloatBuffer b = UtilCL.toFloatBuffer(geberateFloatData(100000, 94673));
         final FloatBuffer answer = BufferUtils.createFloatBuffer(a.capacity());
@@ -110,14 +136,14 @@ public class HelloOpenCL {
         for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
             platform = CLPlatform.getPlatforms().get(platformIndex);
             List<CLDevice> devices;
-            if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
+            if (args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
             else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
             if (devices == null) continue;
             if (devices.size() >= 1) break;
         }
 
         List<CLDevice> devices;
-        if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
+        if (args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
         else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
         System.out.println("Running Benchmark on: ");
         displayDeviceInfo(devices.get(0), 0);
@@ -133,7 +159,7 @@ public class HelloOpenCL {
         clFinish(queue);
 
         // Load the source from a resource file
-        String source = UtilCL.getResourceAsString("cl/calc.txt");
+        String source = UtilCL.getResourceAsString("cl/"+args[1]);
 
         // Create our program and kernel
         CLProgram program = clCreateProgramWithSource(context, source, null);
@@ -167,11 +193,11 @@ public class HelloOpenCL {
         long endTime = System.nanoTime();
 
         long totalTime = endTime - startTime;
-        // Print the result memory
+//         Print the result memory
 //        print(a);
 //        System.out.println("%");
 //        print(b);
-//        System.out.println("=");
+//        System.out.println("=>");
 //        print(answer);
         System.out.println("Cleaning up...");
         // Clean up OpenCL resources
@@ -183,11 +209,6 @@ public class HelloOpenCL {
         clReleaseCommandQueue(queue);
         clReleaseContext(context);
         CL.destroy();
-
-//        if (args.length == 0) {
-//            System.out.println("Starting CPU benchmark");
-////            benchmark("CPU");
-//        }
         return totalTime;
     }
 
@@ -222,7 +243,7 @@ public class HelloOpenCL {
         System.out.println();
     }
 
-    private static float[] geberateFloatData(int i, int modifier) {
+    public static float[] geberateFloatData(int i, int modifier) {
         float[] generated = new float[i];
         for (int j = 0; j < i; j++) {
             generated[j] = modifier * (j % 10);
