@@ -2,12 +2,8 @@ float Fibonacci(float n);
 
 kernel void calc(global const float *a, global const float *b, global float *answer) {
   unsigned int xid = get_global_id(0);
-  answer[xid] = Fibonacci(a[xid]); /**calcHyp(a[xid],b[xid]);**/
+  answer[xid] = Fibonacci(a[xid]);
 }
-
-/**int calcHyp(int a,int b){
-    return sqrt(a*a+b*b);
-}**/
 
 float Fibonacci(float n) {
     if(n <= 0) return 0;
@@ -23,5 +19,5 @@ float Fibonacci(float n) {
         oldResult = result;
     }
 
-return result;
+    return result;
 }
