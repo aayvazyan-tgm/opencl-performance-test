@@ -34,9 +34,9 @@ import static org.lwjgl.opencl.CL10.*;
 
 public class HelloOpenCL {
     public static void main(String... args) throws Exception {
-        displayInfo();
-        System.out.println("--------------------------------------------");
         if (args.length > 0 && args[0].contains("once")) {
+            displayInfo();
+            System.out.println("--------------------------------------------");
             {
                 System.out.println("Starting GPU benchmark");
                 long totalTime = benchmark();
@@ -71,6 +71,8 @@ public class HelloOpenCL {
             }
 
             //Print results
+            displayInfo();
+            System.out.println("--------------------------------------------");
 
             System.out.println("#GPU Result:#");
             for (int i = 0; i < gpuBenchmarkResults.length; i++) {
@@ -89,7 +91,6 @@ public class HelloOpenCL {
             }
             System.out.println();
         }
-
     }
 
     /**
