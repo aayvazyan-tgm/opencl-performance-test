@@ -36,19 +36,60 @@ public class HelloOpenCL {
     public static void main(String... args) throws Exception {
         displayInfo();
         System.out.println("--------------------------------------------");
-        {
+        if (args.length > 0 && args[0].contains("once")) {
+            {
+                System.out.println("Starting GPU benchmark");
+                long totalTime = benchmark();
+                System.out.println("Total execution time in ns:" + totalTime);
+                System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
+            }
+            System.out.println("--------------------------------------------");
+            {
+                System.out.println("Starting CPU benchmark");
+                long totalTime = benchmark("CPU");
+                System.out.println("Total execution time in ns:" + totalTime);
+                System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
+            }
+        } else {
             System.out.println("Starting GPU benchmark");
-            long totalTime = benchmark();
-            System.out.println("Total execution time in ns:" + totalTime);
-            System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
-        }
-        System.out.println("--------------------------------------------");
-        {
+            int benchmarks = 1000;
+            int pauseBetweenBenchmarks=100;
+            double[] gpuBenchmarkResults = new double[benchmarks];
+            for (int i = 0; i < benchmarks; i++) {
+                long res = benchmark();
+                gpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
+                Thread.sleep(pauseBetweenBenchmarks);
+            }
+
+            System.out.println("--------------------------------------------");
             System.out.println("Starting CPU benchmark");
-            long totalTime = benchmark("CPU");
-            System.out.println("Total execution time in ns:" + totalTime);
-            System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
+            double[] cpuBenchmarkResults = new double[benchmarks];
+            for (int i = 0; i < benchmarks; i++) {
+                long res = benchmark("CPU");
+                cpuBenchmarkResults[i] = ((double)res)/1000000d; //convert to ms
+                Thread.sleep(pauseBetweenBenchmarks);
+            }
+
+            //Print results
+
+            System.out.println("#GPU Result:#");
+            for (int i = 0; i < gpuBenchmarkResults.length; i++) {
+                if(i==0) System.out.print("[");
+                System.out.print(gpuBenchmarkResults[i]);
+                if(i!=gpuBenchmarkResults.length-1) System.out.print(",");
+                else System.out.print("]");
+            }
+            System.out.println();
+            System.out.println("#CPU Result:#");
+            for (int i = 0; i < cpuBenchmarkResults.length; i++) {
+                if(i==0) System.out.print("[");
+                System.out.print(cpuBenchmarkResults[i]);
+                if(i!=cpuBenchmarkResults.length-1) System.out.print(",");
+                else System.out.print("]");
+            }
+            System.out.println();
         }
+
     }
 
     /**
