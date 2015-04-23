@@ -21,6 +21,7 @@
 package com.jeffheaton.opencl;
 
 import org.lwjgl.BufferUtils;
+import org.lwjgl.LWJGLException;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opencl.*;
 
@@ -29,61 +30,55 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import static com.jeffheaton.opencl.UtilCL.print;
 import static org.lwjgl.opencl.CL10.*;
 
 public class HelloOpenCL {
-
-    // Data buffers to store the input and result data in
-
-    public static void displayInfo() {
-
-        for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
-            CLPlatform platform = CLPlatform.getPlatforms().get(platformIndex);
-            System.out.println("Platform #" + platformIndex + ":" + platform.getInfoString(CL_PLATFORM_NAME));
-            List<CLDevice> devices = platform.getDevices(CL_DEVICE_TYPE_ALL);
-            if(devices==null)continue;
-            for (int deviceIndex = 0; deviceIndex < devices.size(); deviceIndex++) {
-                CLDevice device = devices.get(deviceIndex);
-                System.out.printf(Locale.ENGLISH, "Device #%d(%s):%s\n",
-                        deviceIndex,
-                        UtilCL.getDeviceType(device.getInfoInt(CL_DEVICE_TYPE)),
-                        device.getInfoString(CL_DEVICE_NAME));
-                System.out.printf(Locale.ENGLISH, "\tCompute Units: %d @ %d mghtz\n",
-                        device.getInfoInt(CL_DEVICE_MAX_COMPUTE_UNITS), device.getInfoInt(CL_DEVICE_MAX_CLOCK_FREQUENCY));
-                System.out.printf(Locale.ENGLISH, "\tLocal memory: %s\n",
-                        UtilCL.formatMemory(device.getInfoLong(CL_DEVICE_LOCAL_MEM_SIZE)));
-                System.out.printf(Locale.ENGLISH, "\tGlobal memory: %s\n",
-                        UtilCL.formatMemory(device.getInfoLong(CL_DEVICE_GLOBAL_MEM_SIZE)));
-                System.out.println();
-            }
+    public static void main(String... args) throws Exception {
+        displayInfo();
+        System.out.println("--------------------------------------------");
+        {
+            System.out.println("Starting GPU benchmark");
+            long totalTime = benchmark();
+            System.out.println("Total execution time in ns:" + totalTime);
+            System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
+        }
+        System.out.println("--------------------------------------------");
+        {
+            System.out.println("Starting CPU benchmark");
+            long totalTime = benchmark("CPU");
+            System.out.println("Total execution time in ns:" + totalTime);
+            System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
         }
     }
 
-    public static void main(String... args) throws Exception {
-        final FloatBuffer a = UtilCL.toFloatBuffer(geberateFloatData(100000,1));
-        final FloatBuffer b = UtilCL.toFloatBuffer(geberateFloatData(100000,94673));
+    /**
+     * @param args "CPU" or nothing
+     * @return
+     * @throws Exception
+     */
+    public static long benchmark(String... args) throws Exception {
+        final FloatBuffer a = UtilCL.toFloatBuffer(geberateFloatData(100000, 1));
+        final FloatBuffer b = UtilCL.toFloatBuffer(geberateFloatData(100000, 94673));
         final FloatBuffer answer = BufferUtils.createFloatBuffer(a.capacity());
 
         // Initialize OpenCL and create a context and command queue
         CL.create();
 
-        if (args.length != 1 || !args[0].equalsIgnoreCase("cpu")) {
-            displayInfo();
-        }
-        CLPlatform platform=null;
+        CLPlatform platform = null;
         for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
             platform = CLPlatform.getPlatforms().get(platformIndex);
             List<CLDevice> devices;
             if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
             else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
-            if(devices==null)continue;
-            if(devices.size()>=1)break;
+            if (devices == null) continue;
+            if (devices.size() >= 1) break;
         }
 
         List<CLDevice> devices;
         if (args.length == 1 && args[0].equalsIgnoreCase("cpu")) devices = platform.getDevices(CL_DEVICE_TYPE_CPU);
         else devices = platform.getDevices(CL_DEVICE_TYPE_GPU);
+        System.out.println("Running Benchmark on: ");
+        displayDeviceInfo(devices.get(0), 0);
         CLContext context = CLContext.create(platform, devices, null, null, null);
         CLCommandQueue queue = clCreateCommandQueue(context, devices.get(0), CL_QUEUE_PROFILING_ENABLE, null);
 
@@ -100,9 +95,15 @@ public class HelloOpenCL {
 
         // Create our program and kernel
         CLProgram program = clCreateProgramWithSource(context, source, null);
-        int error=(clBuildProgram(program, devices.get(0), "", null));
-        System.out.println(program.getBuildInfoString(
-                devices.get(0), CL_PROGRAM_BUILD_LOG));
+        int error = (clBuildProgram(program, devices.get(0), "", null));
+        String compOut = program.getBuildInfoString(devices.get(0), CL_PROGRAM_BUILD_LOG);
+
+        if (compOut != null) {
+            System.out.println(compOut);
+        } else {
+            System.out.println("No compiler output available.");
+        }
+
         Util.checkCLError(error);
         // calc has to match a kernel method name in the OpenCL source
         CLKernel kernel = clCreateKernel(program, "calc", null);
@@ -130,8 +131,6 @@ public class HelloOpenCL {
 //        print(b);
 //        System.out.println("=");
 //        print(answer);
-        System.out.println("Total execution time in ns:" + totalTime);
-        System.out.println("Total execution time in ms:" + TimeUnit.MILLISECONDS.convert(totalTime, TimeUnit.NANOSECONDS));
         System.out.println("Cleaning up...");
         // Clean up OpenCL resources
         clReleaseKernel(kernel);
@@ -143,16 +142,48 @@ public class HelloOpenCL {
         clReleaseContext(context);
         CL.destroy();
 
-        if (args.length == 0) {
-            System.out.println("Starting CPU test");
-            main("CPU");
-        }
+//        if (args.length == 0) {
+//            System.out.println("Starting CPU benchmark");
+////            benchmark("CPU");
+//        }
+        return totalTime;
     }
 
-    private static float[] geberateFloatData(int i,int modifier) {
-        float[] generated=new float[i];
+    // Data buffers to store the input and result data in
+
+    public static void displayInfo() throws LWJGLException {
+        CL.create();
+        for (int platformIndex = 0; platformIndex < CLPlatform.getPlatforms().size(); platformIndex++) {
+            CLPlatform platform = CLPlatform.getPlatforms().get(platformIndex);
+            System.out.println("Platform #" + platformIndex + ":" + platform.getInfoString(CL_PLATFORM_NAME));
+            List<CLDevice> devices = platform.getDevices(CL_DEVICE_TYPE_ALL);
+            if (devices == null) continue;
+            for (int deviceIndex = 0; deviceIndex < devices.size(); deviceIndex++) {
+                CLDevice device = devices.get(deviceIndex);
+                displayDeviceInfo(device, deviceIndex);
+            }
+        }
+        CL.destroy();
+    }
+
+    public static void displayDeviceInfo(CLDevice device, int deviceIndex) {
+        System.out.printf(Locale.ENGLISH, "Device #%d(%s):%s\n",
+                deviceIndex,
+                UtilCL.getDeviceType(device.getInfoInt(CL_DEVICE_TYPE)),
+                device.getInfoString(CL_DEVICE_NAME));
+        System.out.printf(Locale.ENGLISH, "\tCompute Units: %d @ %d mghtz\n",
+                device.getInfoInt(CL_DEVICE_MAX_COMPUTE_UNITS), device.getInfoInt(CL_DEVICE_MAX_CLOCK_FREQUENCY));
+        System.out.printf(Locale.ENGLISH, "\tLocal memory: %s\n",
+                UtilCL.formatMemory(device.getInfoLong(CL_DEVICE_LOCAL_MEM_SIZE)));
+        System.out.printf(Locale.ENGLISH, "\tGlobal memory: %s\n",
+                UtilCL.formatMemory(device.getInfoLong(CL_DEVICE_GLOBAL_MEM_SIZE)));
+        System.out.println();
+    }
+
+    private static float[] geberateFloatData(int i, int modifier) {
+        float[] generated = new float[i];
         for (int j = 0; j < i; j++) {
-            generated[j]=modifier*(j%10);
+            generated[j] = modifier * (j % 10);
         }
         return generated;
     }
