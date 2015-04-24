@@ -7,7 +7,7 @@ kernel void calc(global const float *a, global const float *b, global float *ans
 
 int Euklid(int a, int b)
 {
-    if (a == 0)                          /**Wenn a=0 ist b der größte gemeinsame Teiler laut Definition**/
+    if (a == 0)                          /**Wenn a=0 ist b der groesste gemeinsame Teiler laut Definition**/
     {
     	return b;
     }
@@ -15,12 +15,12 @@ int Euklid(int a, int b)
     {
     	if (a > b)
     	{
-    		a = a - b;               /**Wenn a größer als b, subtrahiere b von a.**/
+    		a = a - b;               /**Wenn a grosster als b, subtrahiere b von a.**/
     	}
         else
     	{
     		b = b - a;               /**In jedem anderen Fall subtrahiere a von b.**/
     	}
     }
-    return a;                            /**In a steht jetzt der größte gemeinsame Teiler von a und b.**/
+    return a;                            /**In a steht jetzt der groesste gemeinsame Teiler von a und b.**/
 }
